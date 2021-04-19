@@ -2,8 +2,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
+#my
+cfx-data*
+config.py
+logs/
 
-# C extensions
+# C extedsions
 *.so
 
 # Distribution / packaging
