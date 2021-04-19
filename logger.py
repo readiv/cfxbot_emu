@@ -1,4 +1,11 @@
-import logging, sys, inspect, os, datetime, config
+import logging, sys, inspect, os, datetime, config, time
+
+class Profiler(object):
+    def __enter__(self):
+        self._startTime = time.time()
+              
+    def __exit__(self, type, value, traceback):
+        print("Elapsed time: {:.3f} sec".format(time.time() - self._startTime))
 
 def get_script_dir(follow_symlinks=True):
     if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
