@@ -1,6 +1,22 @@
 import logger, config
 log = logger.get_logger(__name__)
 
+def get_limit(x1,x2,y1,y2,y):
+    if y1 == 0:
+        y1 = 100000 * y
+    if y2 == 0:
+        y2 = 100000 * y
+    if y2 != y1:
+        x = x1 + (x2 - x1) * (y - y1) /(y2 - y1)
+    else:
+        if y2 < y:
+            x = x2
+        else:
+            x = 0
+    if x < x1 or x > x2:
+        x = 0                
+    return x
+
 class Order(object):
     def __init__(self, market:str, price_BTC_TH_day, limit_TH_s, amount_BTC):
         """Constructor"""
@@ -31,12 +47,13 @@ class Order(object):
         self.limit_TH_s = 0
         self.amount_CFX = 0
 
-    def __del__(self):
-        p = 100 * (self.amount_BTC - self.start_BTC)/self.start_BTC
-        if p > 0:
-            log.warning(f"Stop order {self.market} start={self.start_BTC:2.8f} end={self.amount_BTC:2.8f} percent = {p:3.3f}%")
-        else:
-            log.error(f"Stop order {self.market} start={self.start_BTC:2.8f} end={self.amount_BTC:2.8f} percent = {p:3.3f}%")
+    def __del__(self): #Перед удалением обязательно вызвать stop_and_exchange(self, course:float):
+        # p = 100 * (self.amount_BTC - self.start_BTC)/self.start_BTC
+        # if p > 0:
+        #     log.warning(f"Stop order {self.market} start={self.start_BTC:2.8f} end={self.amount_BTC:2.8f} percent = {p:3.3f}%")
+        # else:
+        #     log.error(f"Stop order {self.market} start={self.start_BTC:2.8f} end={self.amount_BTC:2.8f} percent = {p:3.3f}%")
+        pass
 
 class Nice(object):
     def __init__(self, balance_BTC):
@@ -68,25 +85,9 @@ class Nice(object):
         return False
 
     def start_order_market(self, market:str, diff:int, max_profit_price:float, k_price_estimated:float, p_001:float, p_005:float, 
-                           p_010:float, p_050:float, p_100:float, max_limit_TH_s:float):
-
-        def get_limit(x1,x2,y1,y2,y):
-            if y1 == 0:
-                y1 = 100000 * y
-            if y2 == 0:
-                y2 = 100000 * y
-            if y2 != y1:
-                x = x1 + (x2 - x1) * (y - y1) /(y2 - y1)
-            else:
-                if y2 < y:
-                    x = x2
-                else:
-                    x = 0
-            if x < x1 or x > x2:
-                x = 0                
-            return x
-
-        if self.market_is_present_in_orders(market):
+                           p_010:float, p_050:float, p_100:float, max_limit_TH_s:float, reorder = False, course:float = 0, k_percrnt = 5):
+        present = self.market_is_present_in_orders(market)
+        if (present and not reorder) or (not present and reorder):
             return False
 
         #Определить максимальнуб цену
@@ -107,10 +108,28 @@ class Nice(object):
             return False
 
         #Посчитать количество BTC на час amount_BTC = power * price_power * 3 / 24
-        amount_BTC = round(limit_TH_s * max_price * 3 / 24 + 0.0005, 3)
-        #Выставить ордер на 3 часа через start_order_one
-        self.start_order_one(market, max_price, limit_TH_s, amount_BTC, max_profit_price)
+        amount_BTC = round(limit_TH_s * max_price * 24 / 24 + 0.0005, 3)
+        
+        if not reorder: #Выставить новый ордер start_order_one
+            self.start_order_one(market, max_price, limit_TH_s, amount_BTC, max_profit_price)
+        else:
+            flag_start = False
+            for k in range(len(self.orders)):
+                order = self.orders[k]
+                if order.market == market: #Оцениваем новый ордер. Цена на k_percrnt меньше - перевыставляем
+                    if (((1 + (k_percrnt//10) /100) * max_price < order.price_BTC_TH_day) and 
+                        ((1 + (k_percrnt % 10) /100) * amount_BTC > order.amount_BTC)):
+                        flag_start = True
+                        # log.warning(f"Reorder stop {market} price_BTC_TH_day = {order.price_BTC_TH_day} limit_TH_s = {order.limit_TH_s} amount_BTC = {order.amount_BTC}")
+                        order.stop_and_exchange(course)
+                        self.balance_BTC = self.balance_BTC + order.amount_BTC
+                        self.orders.pop(k)
+                        break
+            if flag_start:
+                # log.warning(f"Reorder start price_BTC_TH_day = {max_price} limit_TH_s = {limit_TH_s} amount_BTC = {amount_BTC}")
+                self.start_order_one(market, max_price, limit_TH_s, amount_BTC, max_profit_price)
 
+    
     def mine(self, diff:int, time_s:float):
         for order in self.orders:
             order.mine(diff,time_s)
@@ -143,8 +162,8 @@ if __name__ == "__main__":
     nice.stop_all_orders(0.00001831)
     log.info(f"3 BTC = {nice.balance_BTC}")
 
-    nice.start_order_one("EU", 1.4, 0.05, 0.08)
-    nice.start_order_one("USA", 1.4, 0.002, 0.025)
+    nice.start_order_market("EU", 2786714681928, 1.51114716813653, 1.1, 1.6, 1.6462, 0, 2.15, 0, 0.0591)
+    nice.start_order_market("USA",2786714681928, 1.51114716813653, 1.1, 0, 1.5462, 1.5868, 1.75, 1.9, 0.0991)
     log.info(f"4 BTC = {nice.balance_BTC}")
     for _ in range(3600*24):
         nice.mine(2254080980003,1)
