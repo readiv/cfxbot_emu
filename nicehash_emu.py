@@ -118,7 +118,8 @@ class Nice(object):
                 order = self.orders[k]
                 if order.market == market: #Оцениваем новый ордер. Цена на k_percrnt меньше - перевыставляем
                     if (((1 + (k_percrnt//10) /100) * max_price < order.price_BTC_TH_day) and 
-                        ((1 + (k_percrnt % 10) /100) * amount_BTC > order.amount_BTC)):
+                        # (100 * (order.start_BTC - order.amount_BTC) / order.start_BTC > 2 * (k_percrnt % 10)) and
+                        (1.05 * amount_BTC > order.amount_BTC)):
                         flag_start = True
                         # log.warning(f"Reorder stop {market} price_BTC_TH_day = {order.price_BTC_TH_day} limit_TH_s = {order.limit_TH_s} amount_BTC = {order.amount_BTC}")
                         order.stop_and_exchange(course)
