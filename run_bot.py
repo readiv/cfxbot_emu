@@ -25,13 +25,13 @@ if __name__ == "__main__":
              "time_start":datetime.datetime.strptime(cfx_data[0][1],"%Y-%m-%d %H:%M:%S.%f"),   # down up_5m up down_5m 
              "deadline":0}   # down up_2m up down_2m 
 
-    for j1 in range(0 , 1):
+    for j1 in range(1 , 10):
         for j2 in range(0 , 1):
             for j3 in range(10 , 11):
                 k_up_down = 0.93 #0.85 # 0.80 - 0.99
                 k_down_up = 1.1 #1.19 #.19 # 1.10 = 1.40
                 k_diff_order_stop = 1.0
-                k_price_estimated = 1.04 #.1 # 1.05 - 1.15 На сколько допустимо превысить рассчетную цену доходности.
+                k_price_estimated = 1 + j1/100 #.1 # 1.05 - 1.15 На сколько допустимо превысить рассчетную цену доходности.
                 time_start_order = 20 # 10 - 100
                 market_lists = ["EU","EU_N","USA","USA_E"]
                 step = 1
@@ -139,6 +139,6 @@ if __name__ == "__main__":
 
                 p = 100 * (nice.balance_BTC - nice.start_balance_BTC)/nice.start_balance_BTC
                 if p > 0:
-                    log.warning(f"|k_diff_order_stop = {j1} |time_start_order = {j2 * 10} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
+                    log.warning(f"|k_price_estimated = {j1} |j2 = {j2 * 10} |j3 = {j3} |ninumum_BTC={nice.minimum_balance_BTC:2.8f} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
                 else:
-                    log.error(f"|k_diff_order_stop = {j1} |time_start_order = {j2 * 10} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
+                    log.error(f"|k_price_estimated = {j1} |j2 = {j2 * 10} |j3 = {j3} |ninumum_BTC={nice.minimum_balance_BTC:2.8f} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")

@@ -61,6 +61,7 @@ class Nice(object):
         """Constructor"""
         self.balance_BTC = balance_BTC
         self.start_balance_BTC = balance_BTC
+        self.minimum_balance_BTC = balance_BTC
         self.balance_CFX = 0
         # self.balance_BTC_prev = balance_BTC
         self.orders = []
@@ -152,6 +153,8 @@ class Nice(object):
         
 
     def mine(self, diff:int, time_s:float):
+        if self.balance_BTC < self.minimum_balance_BTC:
+            self.minimum_balance_BTC = self.balance_BTC
         for order in self.orders:
             order.mine(diff,time_s)
 
