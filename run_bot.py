@@ -25,13 +25,14 @@ if __name__ == "__main__":
              "time_start":datetime.datetime.strptime(cfx_data[0][1],"%Y-%m-%d %H:%M:%S.%f"),   # down up_5m up down_5m 
              "deadline":0}   # down up_2m up down_2m 
 
-    for j1 in range(4 , 5):
-        for j2 in range(4 , 5):
-            for j3 in range(20 , 21):
+    for j1 in range(0 , 1):
+        for j2 in range(0 , 1):
+            for j3 in range(10 , 11):
                 k_up_down = 0.93 #0.85 # 0.80 - 0.99
-                k_down_up = 1 + j3/100#1.19 #.19 # 1.10 = 1.40
-                k_price_estimated = 1 + j1/100 #.1 # 1.05 - 1.15 На сколько допустимо превысить рассчетную цену доходности.
-                time_start_order = j2*60 # 10 - 100
+                k_down_up = 1.1 #1.19 #.19 # 1.10 = 1.40
+                k_diff_order_stop = 1.0
+                k_price_estimated = 1.04 #.1 # 1.05 - 1.15 На сколько допустимо превысить рассчетную цену доходности.
+                time_start_order = 20 # 10 - 100
                 market_lists = ["EU","EU_N","USA","USA_E"]
                 step = 1
                 start_balance = 1.0
@@ -60,13 +61,16 @@ if __name__ == "__main__":
                         continue
 
                     price_BTC = float(cfx_data[i][3]) * int(cfx_data[i][2]) / 1000000000000 / 172800
+                    if price_BTC == 0:
+                        continue
+
                     if (state["state"] == "down" or state["state"] == "up") and diff_now > k_down_up * state["diff"]: #Сложность повысиластб
                         state["state"] = "up_2m"
                         state["time_start"] = time_now
-                        state["deadline"] = 120 # Действует 120 секунд
+                        state["deadline"] = config.time_2m # Действует секунд
                         log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = up_2m")
-                        log.info(f"id={cfx_data[i][0]} Stop All Orders")
-                        nice.stop_all_orders(price_BTC)
+                        # log.info(f"id={cfx_data[i][0]} Stop All Orders")
+                        # nice.stop_all_orders(price_BTC)
 
                     if state["state"] == "up_2m": 
                         if time_now > state["time_start"] + datetime.timedelta(seconds=state["deadline"]):
@@ -78,7 +82,7 @@ if __name__ == "__main__":
                     if (state["state"] == "down" or state["state"] == "up") and diff_now < k_up_down * state["diff"]: #Сложность упала
                         state["state"] = "down_2m"
                         state["time_start"] = time_now
-                        state["deadline"] = 120 # Действует 120 секунд
+                        state["deadline"] = config.time_2m # Действует 120 секунд
                         log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = down_2m") 
                         log.info(f"id={cfx_data[i][0]} Process create orders - stop")
 
@@ -89,21 +93,22 @@ if __name__ == "__main__":
                             state["deadline"] = 0 # Действует 120 секунд
                             log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = down")
 
-                    if state["state"] == "up" and state["deadline"] != 0: #Начинаем выставлять ордера.
-                        if time_now > state["time_start"] + datetime.timedelta(seconds=state["deadline"]):
-                            for k in range(0,len(market_lists)):
-                                nice.start_order_market(market_lists[k], diff_now, 
-                                                        max_profit_price = float(cfx_data[i][3]), 
-                                                        k_price_estimated = k_price_estimated, 
-                                                        p_001 = float(cfx_data[i][4 + k]), 
-                                                        p_005 = float(cfx_data[i][8 + k]), 
-                                                        p_010 = float(cfx_data[i][12 + k]), 
-                                                        p_050 = float(cfx_data[i][16 + k]), 
-                                                        p_100 = float(cfx_data[i][20 + k]), 
-                                                        max_limit_TH_s = float(cfx_data[i][24 + k]))
-                            if len(nice.orders) == 4:
-                                log.info(f"id={cfx_data[i][0]} Process create orders - stop. order count == 4")
-                                state["deadline"] = 0 #Если выставлены ордера на всех рынках то хватит выставлять
+                    if state["state"] == "up" and time_now > state["time_start"] + datetime.timedelta(seconds=state["deadline"]): 
+                        for k in range(0,len(market_lists)): #Начинаем выставлять ордера.
+                            nice.start_order_market(market_lists[k], diff_now, #Если ордер уже есть то не выставлять его
+                                                    max_profit_price = float(cfx_data[i][3]), 
+                                                    k_price_estimated = k_price_estimated, 
+                                                    p_001 = float(cfx_data[i][4 + k]), 
+                                                    p_005 = float(cfx_data[i][8 + k]), 
+                                                    p_010 = float(cfx_data[i][12 + k]), 
+                                                    p_050 = float(cfx_data[i][16 + k]), 
+                                                    p_100 = float(cfx_data[i][20 + k]), 
+                                                    max_limit_TH_s = float(cfx_data[i][24 + k]))
+                            # if len(nice.orders) == 4:
+                            #     log.info(f"id={cfx_data[i][0]} Process create orders - stop. order count == 4")
+                            #     state["deadline"] = 0 #Если выставлены ордера на всех рынках то хватит выставлять
+                    # Майним
+                    nice.mine(diff_now, delta.seconds)
 
                     # Всё время проверяем выставленые ордера и если есть более выгодеый - переустанавливаем
                     # if len(nice.orders) != 0: #как то неэфективно получилось 
@@ -119,9 +124,12 @@ if __name__ == "__main__":
                     #                                 max_limit_TH_s = float(cfx_data[i][24 + k]),
                     #                                 reorder=True,
                     #                                 course = price_BTC,
-                    #                                 k_percrnt=95) #Первая цифра на сколько % должна измениться цена, вторая мощьность
+                    #                                 k_percrnt=5) 
                     
-                    nice.mine(diff_now, delta.seconds)
+                    # Проверяем все ордера и если какой-то невыгодный - стопаем его
+                    if ((state["state"] == "up" and time_now <= state["time_start"] + datetime.timedelta(seconds=state["deadline"])) or
+                        (state["state"] == "down")):
+                        nice.check_and_stop(float(cfx_data[i][2]), k_diff_order_stop, price_BTC)
 
                     if diff_now != state["diff"]:
                         log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now}")
@@ -131,6 +139,6 @@ if __name__ == "__main__":
 
                 p = 100 * (nice.balance_BTC - nice.start_balance_BTC)/nice.start_balance_BTC
                 if p > 0:
-                    log.warning(f"|k_price_estimated = {j1} |time_start_order = {j2} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
+                    log.warning(f"|k_diff_order_stop = {j1} |time_start_order = {j2 * 10} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
                 else:
-                    log.error(f"|k_price_estimated = {j1} |time_start_order = {j2} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
+                    log.error(f"|k_diff_order_stop = {j1} |time_start_order = {j2 * 10} |k_down_up = {j3} |start={nice.start_balance_BTC:2.8f} |end=|{nice.balance_BTC:2.8f}|percent = {p:3.3f}%")
