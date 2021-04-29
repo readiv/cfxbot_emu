@@ -25,9 +25,9 @@ if __name__ == "__main__":
              "time_start":datetime.datetime.strptime(cfx_data[0][1],"%Y-%m-%d %H:%M:%S.%f"),   # down up_5m up down_5m 
              "deadline":0}   # down up_2m up down_2m 
 
-    for j1 in range(0 , 15):
-        for j2 in range(3 , 120):
-            for j3 in range(18 , 21):
+    for j1 in range(4 , 5):
+        for j2 in range(4 , 5):
+            for j3 in range(20 , 21):
                 k_up_down = 0.93 #0.85 # 0.80 - 0.99
                 k_down_up = 1 + j3/100#1.19 #.19 # 1.10 = 1.40
                 k_price_estimated = 1 + j1/100 #.1 # 1.05 - 1.15 На сколько допустимо превысить рассчетную цену доходности.
