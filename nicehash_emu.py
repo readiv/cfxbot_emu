@@ -1,27 +1,28 @@
 import logger, config
 log = logger.get_logger(__name__)
 
-def get_limit(x1,x2,y1,y2,y):
-    if y1 == 0:
-        y1 = 100000 * y
-    if y2 == 0:
-        y2 = 100000 * y
-    if y2 != y1:
-        x = x1 + (x2 - x1) * (y - y1) /(y2 - y1)
-    else:
-        if y2 < y:
-            x = x2
-        else:
-            x = 0
-    if x < x1 or x > x2:
-        x = 0                
-    return x
+# def get_limit(x1,x2,y1,y2,y):
+#     if y1 == 0:
+#         y1 = 100000 * y
+#     if y2 == 0:
+#         y2 = 100000 * y
+#     if y2 != y1:
+#         x = x1 + (x2 - x1) * (y - y1) /(y2 - y1)
+#     else:
+#         if y2 < y:
+#             x = x2
+#         else:
+#             x = 0
+#     if x < x1 or x > x2:
+#         x = 0                
+#     return x
 
 class Order(object):
     def __init__(self, market:str, diff:int, price_BTC_TH_day, limit_TH_s, amount_BTC):
         """Constructor"""
         self.market = market
         self.diff = diff
+        self.timer = 0
         self.price_BTC_TH_day = price_BTC_TH_day
         self.limit_TH_s = limit_TH_s
         self.start_BTC =  amount_BTC
@@ -32,6 +33,7 @@ class Order(object):
         return self.market == market
 
     def mine(self, diff:int, time_s:float):
+        self.timer += time_s
         if self.amount_BTC == 0:
             return
         delta_CFX = 172800 * (1000000000000 * self.limit_TH_s / (diff)) * (time_s / (24 * 60 * 60))
@@ -42,6 +44,12 @@ class Order(object):
         self.amount_CFX = self.amount_CFX + delta_CFX
         self.amount_BTC = self.amount_BTC - delta_BTC
         # log.info(f"{self.market} BTC = {self.amount_BTC} CFX = {self.amount_CFX}")
+
+    def add_amount(self, amount_BTC):
+        self.amount_BTC += config.commission_nicehash * amount_BTC #3,8 процента комиссия nicehash
+
+    def get_time_live(self):
+        return self.amount_BTC * 24 * 60 * 60 / self.limit_TH_s / self.price_BTC_TH_day 
 
     def stop_and_exchange(self, course:float):
         self.amount_BTC = self.amount_BTC / config.commission_nicehash + course * self.amount_CFX
@@ -98,7 +106,7 @@ class Nice(object):
                 break
 
     def start_order_market(self, market:str, diff:int, max_profit_price:float, k_price_estimated:float, p_001:float, p_005:float, 
-                           p_010:float, p_050:float, p_100:float, max_limit_TH_s:float, reorder = False, course:float = 0, k_percrnt = 5):
+                           p_010:float, p_050:float, p_100:float, max_limit_TH_s:float, reorder = False, course:float = 0, k_percrnt = 1.0):
         present = self.market_is_present_in_orders(market) 
         if (present and not reorder) or (not present and reorder): #Если ордер уже есть то не выставлять
             return False
@@ -107,24 +115,45 @@ class Nice(object):
         max_price = max_profit_price * k_price_estimated
 
         #Определить масимальную мощьность limit_TH_s
+        # limit_TH_s = 0
+        # limit_TH_s = max([limit_TH_s, get_limit(0.001,0.005,p_001,p_005,max_price)])
+        # limit_TH_s = max([limit_TH_s, get_limit(0.005,0.010,p_005,p_010,max_price)])
+        # limit_TH_s = max([limit_TH_s, get_limit(0.010,0.050,p_010,p_050,max_price)])
+        # limit_TH_s = max([limit_TH_s, get_limit(0.050,0.100,p_050,p_100,max_price)])
+        # if max_price > p_100 and p_100 != 0:  
+        #     limit_TH_s = 0.100
+        # if limit_TH_s > 0.99 * max_limit_TH_s:
+        #     limit_TH_s = 0.99 * max_limit_TH_s
+        # limit_TH_s = round(limit_TH_s - 0.0005, 3)
+        # if limit_TH_s < 0.001:
+        #     return False
+
         limit_TH_s = 0
-        limit_TH_s = max([limit_TH_s, get_limit(0.001,0.005,p_001,p_005,max_price)])
-        limit_TH_s = max([limit_TH_s, get_limit(0.005,0.010,p_005,p_010,max_price)])
-        limit_TH_s = max([limit_TH_s, get_limit(0.010,0.050,p_010,p_050,max_price)])
-        limit_TH_s = max([limit_TH_s, get_limit(0.050,0.100,p_050,p_100,max_price)])
-        if max_price > p_100 and p_100 != 0:  
-            limit_TH_s = 0.100
-        if limit_TH_s > 0.99 * max_limit_TH_s:
-            limit_TH_s = 0.99 * max_limit_TH_s
-        limit_TH_s = round(limit_TH_s - 0.0005, 3)
+        price = 0
+        if p_001 !=0 and p_001 < max_price and 0.001 < max_limit_TH_s:
+            limit_TH_s = 0.001
+            price = p_001
+        if p_005 !=0 and p_005< max_price and 0.001 < max_limit_TH_s:
+            limit_TH_s = 0.005
+            price = p_005
+        if p_010 !=0 and p_010 < max_price and 0.001 < max_limit_TH_s:
+            limit_TH_s = 0.010
+            price = p_010
+        if p_050 !=0 and p_050 < max_price and 0.001 < max_limit_TH_s:
+            limit_TH_s = 0.050
+            price = p_050
+        if p_100 !=0 and p_100 < max_price and 0.001 < max_limit_TH_s:
+            limit_TH_s = 0.001
+            price = p_100
+
         if limit_TH_s < 0.001:
             return False
 
         #Посчитать количество BTC на час amount_BTC = power * price_power * 3 / 24
-        amount_BTC = round(limit_TH_s * max_price * 24 / 24 + 0.0005, 3)
+        amount_BTC = round(limit_TH_s * price * config.time_order / 24 + 0.0005, 3)
         
         if not reorder: #Выставить новый ордер start_order_one
-            self.start_order_one(market, diff, max_price, limit_TH_s, amount_BTC, max_profit_price)
+            self.start_order_one(market, diff, price, limit_TH_s, amount_BTC, max_profit_price)
         else:
             flag_start = False
             for k in range(len(self.orders)):
@@ -132,31 +161,71 @@ class Nice(object):
                 if order.market == market: #Оцениваем новый ордер. Цена на k_percrnt меньше - перевыставляем
                     # if (((1 + (k_percrnt//10) /100) * max_price < order.price_BTC_TH_day) and 
                     #     # (100 * (order.start_BTC - order.amount_BTC) / order.start_BTC > 2 * (k_percrnt % 10)) and
-                    #     (1.05 * amount_BTC > order.amount_BTC)):
-                    k1 = 1 + (k_percrnt/100)                   
-                    if max_price * amount_BTC > k1 * order.price_BTC_TH_day * order.amount_BTC:
+                    #     (1.05 * amount_BTC > order.amount_BTC)):                  
+                    if  ((k_percrnt * price < order.price_BTC_TH_day) and
+                        (limit_TH_s > 0.9 * order.limit_TH_s)):
                         flag_start = True
                         # log.warning(f"Reorder stop {market} price_BTC_TH_day = {order.price_BTC_TH_day} limit_TH_s = {order.limit_TH_s} amount_BTC = {order.amount_BTC}")
                         self.stop_order_n(k,course)
                         break
             if flag_start:
                 # log.warning(f"Reorder start price_BTC_TH_day = {max_price} limit_TH_s = {limit_TH_s} amount_BTC = {amount_BTC}")
-                self.start_order_one(market, diff, max_price, limit_TH_s, amount_BTC, max_profit_price)
+                self.start_order_one(market, diff, price, limit_TH_s, amount_BTC, max_profit_price)
 
-    def check_and_stop(self, diff:float, k_diff_order_stop : float, course:float):
+    def check_and_stop_diff(self, diff:float, k_diff_order_stop : float, course:float):
         k = 0
         while k < len(self.orders):
             if diff > k_diff_order_stop * self.orders[k].diff:
                 self.stop_order_n(k , course)
             else: 
                 k += 1
-        
 
+    def check_and_stop_price(self, price:float, k_price_order_stop : float, course:float):
+        k = 0
+        while k < len(self.orders):
+            if k_price_order_stop * price < self.orders[k].price_BTC_TH_day:
+                self.stop_order_n(k , course)
+            else: 
+                k += 1
+
+    def check_and_stop(self, course:float):
+        """ Остановка при 0 балансе, либот по времени 24 часа """
+        k = 0
+        while k < len(self.orders):
+            if self.orders[k].amount_BTC == 0 or self.orders[k].timer > 24 * 60 * 60:
+                self.stop_order_n(k , course)
+            else: 
+                k += 1
+
+    def check_and_add_amount(self):
+        """ Пополняем ордер 1 час если ему осталось жить 30 минут = 1800 секунд """
+        for order in self.orders:
+            time_live = order.get_time_live()
+            if time_live < 1800 and order.timer + time_live < 24 * 60 * 60:
+                time_amount = 24 * 60 * 60 - order.timer 
+                if time_amount > config.time_order * 60 *60:
+                    time_amount = config.time_order * 60 *60
+                amount_BTC = round(order.limit_TH_s * order.price_BTC_TH_day * time_amount / 24 / 60 / 60 + 0.0005, 3)
+                if amount_BTC > self.balance_BTC:
+                    amount_BTC = self.balance_BTC
+                order.add_amount(amount_BTC)
+                self.balance_BTC -= amount_BTC
+
+        
     def mine(self, diff:int, time_s:float):
         if self.balance_BTC < self.minimum_balance_BTC:
             self.minimum_balance_BTC = self.balance_BTC
         for order in self.orders:
             order.mine(diff,time_s)
+
+    def exchange_CFX(self, course:float, amount_CFX_for_exchange):
+        for order in self.orders:
+            self.balance_CFX += order.amount_CFX
+            order.amount_CFX = 0
+        if self.balance_CFX > amount_CFX_for_exchange:
+            self.balance_BTC = self.balance_BTC + course * self.balance_CFX #* 0.991 - 0.00056
+            # log.warning("Exchange")
+            self.balance_CFX = 0
 
     def stop_all_orders(self, course:float):
         while len(self.orders) != 0:

@@ -5,7 +5,8 @@ class Profiler(object):
         self._startTime = time.time()
               
     def __exit__(self, type, value, traceback):
-        print("Elapsed time: {:.3f} sec".format(time.time() - self._startTime))
+        # print("Elapsed time: {:.3f} sec".format(time.time() - self._startTime))
+        pass
 
 def get_script_dir(follow_symlinks=True):
     if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
