@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     cfx_data = []
     
-    with open('cfx-data1.csv', newline='') as File:  
+    with open('cfx-data2.csv', newline='') as File:  
         reader = csv.reader(File, delimiter='\t')
         for row in reader:
             try:
