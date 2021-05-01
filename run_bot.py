@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     cfx_data = []
     
-    with open('cfx-data.csv', newline='') as File:  
+    with open('cfx-data1.csv', newline='') as File:  
         reader = csv.reader(File, delimiter='\t')
         for row in reader:
             try:
@@ -27,8 +27,8 @@ if __name__ == "__main__":
 
     
     for j1 in range(0 , 1):
-        for j2 in range(0 , 10):
-            for j3 in range(0 , 170):
+        for j2 in range(8 , 9):
+            for j3 in range(1 , 2):
                 with logger.Profiler() as p:
                     k_up_down = 0.93 #0.85 # 0.80 - 0.99
                     k_down_up = 1.1 #1.19 #.19 # 1.10 = 1.40
