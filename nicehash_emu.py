@@ -17,6 +17,23 @@ log = logger.get_logger(__name__)
 #         x = 0                
 #     return x
 
+class Avg_price(object):
+    def __init__(self):
+        self.n = [0,0,0,0]
+        self.p = [0,0,0,0]
+
+    def add(self, i:int, price):
+            if i<0 or i>4:
+                return
+            if price != 0:
+                self.n[i] += 1
+                self.p[i] += price
+
+    def get(self, i):
+        if self.n[i] == 0:
+            return -1
+        return self.p[i]/self.n[i]
+
 class Order(object):
     def __init__(self, market:str, diff:int, price_BTC_TH_day, limit_TH_s, amount_BTC):
         """Constructor"""
@@ -73,6 +90,7 @@ class Nice(object):
         self.balance_CFX = 0
         # self.balance_BTC_prev = balance_BTC
         self.orders = []
+        self.avg = Avg_price()
 
     def market_is_present_in_orders(self, market):
         result = False
@@ -81,6 +99,20 @@ class Nice(object):
                 result = True
                 break
         return result
+
+    def get_price_order(self, market):
+        price = 0.0
+        for order in self.orders:
+            if order.market == market:
+                return order.price_BTC_TH_day
+        return price
+
+    def get_order(self, market):
+        order_r = None
+        for order in self.orders:
+            if order.market == market:
+                return order
+        return order_r
 
     def start_order_one(self, market, diff, price_BTC_TH_day, limit_TH_s, amount_BTC, max_profit_price):
         if self.balance_BTC == 0:
@@ -165,12 +197,13 @@ class Nice(object):
                     if  ((k_percrnt * price < order.price_BTC_TH_day) and
                         (limit_TH_s > 0.9 * order.limit_TH_s)):
                         flag_start = True
+                        diff_old_order = order.diff
                         # log.warning(f"Reorder stop {market} price_BTC_TH_day = {order.price_BTC_TH_day} limit_TH_s = {order.limit_TH_s} amount_BTC = {order.amount_BTC}")
                         self.stop_order_n(k,course)
                         break
             if flag_start:
                 # log.warning(f"Reorder start price_BTC_TH_day = {max_price} limit_TH_s = {limit_TH_s} amount_BTC = {amount_BTC}")
-                self.start_order_one(market, diff, price, limit_TH_s, amount_BTC, max_profit_price)
+                self.start_order_one(market, diff_old_order, price, limit_TH_s, amount_BTC, max_profit_price)
 
     def check_and_stop_diff(self, diff:float, k_diff_order_stop : float, course:float):
         k = 0
@@ -251,4 +284,12 @@ if __name__ == "__main__":
         nice.mine(2254080980003,1)
     nice.stop_all_orders(0.00001831)
     log.info(f"5 BTC = {nice.balance_BTC}")
+
+    avg = Avg_price()
+    avg.add(15,14,13,0)
+    avg.add(11,11,11,12)
+    print(avg.n,avg.p)
+    for i in range(4):
+        print(avg.get(i))
+
 
