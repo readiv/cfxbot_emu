@@ -45,7 +45,7 @@ if __name__ == "__main__":
         nice = Nice(start_balance)
 
         for i in range(step,len(cfx_data),step):
-            row = [i,int(cfx_data[i][2])/1500000000000,float(cfx_data[i][3])]
+            row = [i,int(cfx_data[i][2])/1000000000000,float(cfx_data[i][3])]
 
             diff_now = int(cfx_data[i][2])
             if diff_now == 0:
