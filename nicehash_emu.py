@@ -140,6 +140,7 @@ class Nice(object):
     def start_order_market(self, market:str, diff:int, max_profit_price:float, k_price_estimated:float, p_001:float, p_005:float, 
                            p_010:float, p_050:float, p_100:float, max_limit_TH_s:float, reorder = False, course:float = 0, k_percrnt = 1.0):
         present = self.market_is_present_in_orders(market) 
+
         if (present and not reorder) or (not present and reorder): #Если ордер уже есть то не выставлять
             return False
 
@@ -197,7 +198,7 @@ class Nice(object):
                     if  ((k_percrnt * price < order.price_BTC_TH_day) and
                         (limit_TH_s > 0.9 * order.limit_TH_s)):
                         flag_start = True
-                        diff_old_order = order.diff
+                        diff_old_order = order.diff #Сохраняем сложность от ордера, который надо перевыставить
                         # log.warning(f"Reorder stop {market} price_BTC_TH_day = {order.price_BTC_TH_day} limit_TH_s = {order.limit_TH_s} amount_BTC = {order.amount_BTC}")
                         self.stop_order_n(k,course)
                         break

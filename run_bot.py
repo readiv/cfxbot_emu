@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
             #Разница между двумя раундами очень велика Стоп все ордера
             delta = time_now - datetime.datetime.strptime(cfx_data[i - config.step][1],"%Y-%m-%d %H:%M:%S.%f")
-            # print(delta.seconds + delta.microseconds/1000000)
+
             if delta.seconds > 1800: 
                 log.info(f"{cfx_data[i][0]} delta = {delta.seconds}")
                 log.info(f"id={cfx_data[i][0]} Stop All Orders") 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
             if price_BTC == 0:
                 continue
 
-            if (state["state"] == "down" or state["state"] == "up") and diff_now > config.k_down_up * state["diff"]: #Сложность повысиластб
+            if (state["state"] == "down" or state["state"] == "up") and diff_now > config.k_down_up * state["diff"]: #Сложность повысилась
                 state["state"] = "up_2m"
                 state["time_start"] = time_now
                 state["deadline"] = config.time_2m # Действует секунд
@@ -83,13 +83,12 @@ if __name__ == "__main__":
                     state["state"] = "up"
                     state["time_start"] = time_now
                     state["deadline"] = config.time_start_order
-                    # k_avg = 1.0 + j2/100
                     log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = up")
     
             if (state["state"] == "down" or state["state"] == "up") and diff_now < config.k_up_down * state["diff"]: #Сложность упала
                 state["state"] = "down_2m"
                 state["time_start"] = time_now
-                state["deadline"] = config.time_2m # Действует 120 секунд
+                state["deadline"] = config.time_2m # Действует time_2m секунд
                 log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = down_2m") 
                 log.info(f"id={cfx_data[i][0]} Process create orders - stop")
 
@@ -97,7 +96,7 @@ if __name__ == "__main__":
                 if time_now > state["time_start"] + datetime.timedelta(seconds=state["deadline"]):
                     state["state"] = "down"
                     state["time_start"] = time_now
-                    state["deadline"] = 0 # Действует 120 секунд
+                    state["deadline"] = 0 # Действует time_2m секунд
                     log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = down")
 
             if state["state"] == "up" and time_now < state["time_start"] + datetime.timedelta(seconds=state["deadline"]):
@@ -111,7 +110,7 @@ if __name__ == "__main__":
             if state["state"] == "up" and time_now > state["time_start"] + datetime.timedelta(seconds=state["deadline"]): 
                 for k in range(0,len(config.market_lists)): #Начинаем выставлять ордера.
                     if float(cfx_data[i][ 4 + k]) !=0:
-                        nice.start_order_market(config.market_lists[k], diff_now, #Если ордер уже есть то не выставлять его
+                        nice.start_order_market(config.market_lists[k], diff_now, 
                                                 max_profit_price = float(cfx_data[i][3]), 
                                                 k_price_estimated = config.k_price_estimated, 
                                                 p_001 = float(cfx_data[i][ 4 + k]), 
@@ -120,17 +119,13 @@ if __name__ == "__main__":
                                                 p_050 = float(cfx_data[i][16 + k]), 
                                                 p_100 = float(cfx_data[i][20 + k]), 
                                                 max_limit_TH_s = float(cfx_data[i][24 + k]))
-                    # if len(nice.orders) == 4:
-                    #     log.info(f"id={cfx_data[i][0]} Process create orders - stop. order count == 4")
-                    #     state["deadline"] = 0 #Если выставлены ордера на всех рынках то хватит выставлять
-            # Майним
             
             nice.mine(diff_now, delta.seconds + delta.microseconds/1000000)
             nice.check_and_add_amount() #Пополняем ордера
             nice.check_and_stop(price_BTC)
             nice.exchange_CFX(price_BTC, config.amount_CFX_for_exchange)
 
-            for k in range(0,len(config.market_lists)):
+            for k in range(0,len(config.market_lists)): #Формируем row для csv файл 
                 if float(cfx_data[i][ 4 + k]) == 0:
                     cfx_data[i][ 4 + k] = cfx_data[i][3]
                 row.append(float(cfx_data[i][ 4 + k]))
