@@ -82,11 +82,11 @@ class Order(object):
         pass
 
 class Nice(object):
-    def __init__(self, balance_BTC):
+    def __init__(self):
         """Constructor"""
-        self.balance_BTC = balance_BTC
-        self.start_balance_BTC = balance_BTC
-        self.minimum_balance_BTC = balance_BTC
+        self.balance_BTC = config.start_balance
+        self.start_balance_BTC = config.start_balance
+        self.minimum_balance_BTC = config.start_balance
         self.balance_CFX = 0
         # self.balance_BTC_prev = balance_BTC
         self.orders = []
