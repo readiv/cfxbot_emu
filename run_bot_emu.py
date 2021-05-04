@@ -83,6 +83,7 @@ if __name__ == "__main__":
                     state["state"] = "up"
                     state["time_start"] = time_now
                     state["deadline"] = config.time_start_order
+                    nice.avg_reset()
                     log.info(f"id={cfx_data[i][0]} diff_old = {state['diff']} diff_new = {diff_now} state = up")
     
             if (state["state"] == "down" or state["state"] == "up") and diff_now < config.k_up_down * state["diff"]: #Сложность упала

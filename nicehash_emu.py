@@ -34,6 +34,10 @@ class Avg_price(object):
             return -1
         return self.p[i]/self.n[i]
 
+    def reset(self):
+        self.n = [0,0,0,0]
+        self.p = [0,0,0,0]
+
 class Order(object):
     def __init__(self, market:str, diff:int, price_BTC_TH_day, limit_TH_s, amount_BTC):
         """Constructor"""
@@ -99,6 +103,9 @@ class Nice(object):
                 result = True
                 break
         return result
+
+    def avg_reset(self):
+        self.avg.reset()
 
     def get_price_order(self, market):
         price = 0.0
