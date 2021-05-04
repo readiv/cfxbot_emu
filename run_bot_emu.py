@@ -6,7 +6,7 @@ from nicehash_emu import Nice
 log = logger.get_logger(__name__)
 
 if __name__ == "__main__":
-    log.info("======================== Start =========================")         
+    log.info("===========+============= Start ============+=============")         
 
     cfx_data = []
     
